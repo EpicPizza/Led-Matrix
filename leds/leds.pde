@@ -3,6 +3,7 @@ import java.util.*;
 //square, elipse, line, outlines
 
 char[][] leds;
+char[][] highlighter;
 
 //for undo and redo
 char[][][] ledsLast;
@@ -14,14 +15,16 @@ PrintWriter file;
 BufferedReader reader;
 //for reading file
 colors Colors;
+int highlightUndo = 0;
+int highlightRedo = 0;
+int highlightSave = 0;
+int highlightLoad = 0;
 
 int red;
 int blue;
 int green;
 int fillMode = 1;
 int alertMode = 0;
-
-HashMap<colors, Character> map;
 
 /*
 Green - 25, 125, 25
@@ -35,6 +38,8 @@ light green - 144, 255, 144
 Brown - 100, 64, 19
 */
 
+HashMap<colors, Character> map;
+
 void resetUndoAndRedo() {
   for(int i = 0; i < 40; i++) {
     for(int a = 0; a < 32; a = a + 1) {
@@ -46,8 +51,17 @@ void resetUndoAndRedo() {
   } 
 }
 
-void setup() {
+void resetHighlight() {
+  for(int a = 0; a < 32; a = a + 1) {
+    for(int b = 0; b < 32; b = b + 1) {
+      highlighter[a][b] = '0';
+    }
+  }  
+}
+
+void setup() { 
   leds = new char[32][32];
+  highlighter = new char[32][32];
   ledsLast = new char[40][32][32];
   ledsNext = new char[40][32][32];
   size(880, 700);
@@ -114,27 +128,70 @@ int shapeMode = 0;
 int xMode = 1;
 int yMode = 2;
 
-void draw() {
+void draw() {  
   background(100);
   ellipseMode(CORNER);
   Colors.displayColors();
   x = 35;
+  if(hasPressed == 1 && shapeMode == 1) {
+    if(fillMode == 1) {
+      resetHighlight();
+      highlightSquare((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY));
+    } else if(fillMode == 0) {
+      try { 
+        resetHighlight();
+        highlightLine((((int)saveX - 35) / 20), (((int)saveY - 35) / 20), ((centerize(mouseX) - 35) / 20), (((int)saveY - 35) / 20));
+        highlightLine((((int)saveX - 35) / 20), ((centerize(mouseY) - 35) / 20), ((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20));
+        highlightLine((((int)saveX - 35) / 20), ((centerize(mouseY) - 35) / 20), (((int)saveX - 35) / 20), (((int)saveY - 35) / 20));
+        highlightLine(((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20), ((centerize(mouseX) - 35) / 20), (((int)saveY - 35) / 20));
+      } catch(Exception e) {
+        //nothing
+      }
+    } 
+  } else if(hasPressed == 1 && shapeMode == 4) {
+    resetHighlight();
+    try {
+      highlightLine((((int)saveX - 35) / 20), (((int)saveY - 35) / 20), ((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20));
+    } catch(Exception e) {
+      //nothing
+    }
+  } else if(hasPressed == 1 && shapeMode == 3) {
+    resetHighlight();
+    if(fillMode == 0) {
+      drawCircle((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY), 1);
+    } else if(fillMode == 1) {
+      drawFilledCircle((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY), 1);
+    }
+  }
   if(hasPressed == 1 && shapeMode != 2) {
     //if drawer is chosing where to draw rectange, show where orginally clicked
     fill(150);
     ellipse(saveX - 2, saveY - 2, 14, 14);
-  } 
+  }
   if(triangleVertex > 0 && shapeMode == 2) {
-    fill(150);
-    if(triangleVertex == 1) {
-      ellipse(((triVertexX1 * 20) + 35) - 2, ((triVertexY1 * 20) + 35) - 2, 14, 14);
-    } else if(triangleVertex > 1) {
-      ellipse(((triVertexX1 * 20) + 35) - 2, ((triVertexY1 * 20) + 35) - 2, 14, 14);
-      ellipse(((triVertexX2 * 20) + 35) - 2, ((triVertexY2 * 20) + 35) - 2, 14, 14);
+    try { 
+      fill(150);
+      resetHighlight();
+      if(triangleVertex == 1) {
+        //ellipse(((triVertexX1 * 20) + 35) - 2, ((triVertexY1 * 20) + 35) - 2, 14, 14);
+        highlightLine((int)triVertexX1, (int)triVertexY1, ((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20));
+      } else if(triangleVertex > 1) {
+        //ellipse(((triVertexX1 * 20) + 35) - 2, ((triVertexY1 * 20) + 35) - 2, 14, 14);
+        //ellipse(((triVertexX2 * 20) + 35) - 2, ((triVertexY2 * 20) + 35) - 2, 14, 14);
+        highlightLine((int)triVertexX1, (int)triVertexY1, (int)triVertexX2, (int)triVertexY2);
+        highlightLine((int)triVertexX2, (int)triVertexY2, ((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20));
+        highlightLine(((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20), (int)triVertexX1, (int)triVertexY1);
+        if(fillMode == 1) {
+          drawFilledTriangle((int)triVertexX1, (int)triVertexY1, (int)triVertexX2, (int)triVertexY2, ((centerize(mouseX) - 35) / 20), ((centerize(mouseY) - 35) / 20), 1);
+        }
+      }
+    } catch(Exception e) {
+      //nothing
     }
   }
   //uses for nested for loops to draw circles, variables x and y start at 35 (coords), then add 20 each time to draw next rectange
   //at that location
+  x = 35;
   for(int i = 0; i < 32; i = i + 1) {
     y = 35;
     for(int j = 0; j < 32; j = j + 1) {
@@ -187,7 +244,7 @@ void draw() {
                   drawLine((int)triVertexX1, (int)triVertexY1, (int)triVertexX2, (int)triVertexY2);
                   drawLine((int)triVertexX2, (int)triVertexY2, (int)triVertexX3, (int)triVertexY3);
                   drawLine((int)triVertexX3, (int)triVertexY3, (int)triVertexX1, (int)triVertexY1);
-                  drawFilledTriangle((int)triVertexX1, (int)triVertexY1, (int)triVertexX2, (int)triVertexY2, (int)triVertexX3, (int)triVertexY3);
+                  drawFilledTriangle((int)triVertexX1, (int)triVertexY1, (int)triVertexX2, (int)triVertexY2, (int)triVertexX3, (int)triVertexY3, 0);
                 }
               }
             }
@@ -203,6 +260,10 @@ void draw() {
           //draws the highlighted circle
           ellipse(x - 2, y - 2, 14, 14);
         }
+      }
+      if(highlighter[(int)i][(int)j] == '1') {
+        fill(150);
+        ellipse(x - 2, y - 2, 14, 14);
       }
       //uses array to choose the color to set to
       switch(leds[(int)i][(int)j]) {
@@ -257,6 +318,7 @@ void draw() {
       }
       //draws circle
       ellipse(x, y, 10, 10);  
+      
       y = y + 20;
     }
     x = x + 20;
@@ -327,17 +389,67 @@ void draw() {
   
   //695, 315
   
+  if(highlightUndo == 1) {
+    fill(0, 0, 0, 50);
+    rect(695, 355, 80, 5);
+    rect(695, 390, 80, 5);
+    rect(695, 360, 5, 30);
+    rect(770, 360, 5, 30);  
+  }
+  
+  if(highlightRedo == 1) {
+    fill(0, 0, 0, 50);
+    rect(775, 355, 80, 5);
+    rect(775, 390, 80, 5);
+    rect(775, 360, 5, 30);
+    rect(850, 360, 5, 30);  
+  }
+  
+  if(highlightLoad == 1) {
+    fill(0, 0, 0, 50);
+    rect(695, 435, 80, 5);
+    rect(695, 470, 80, 5);
+    rect(695, 440, 5, 30);
+    rect(770, 440, 5, 30);  
+  }
+
+  if(highlightSave == 1) {
+    fill(0, 0, 0, 50);
+    rect(775, 435, 80, 5);
+    rect(775, 470, 80, 5);
+    rect(775, 440, 5, 30);
+    rect(850, 440, 5, 30); 
+  }
+  
   //undo and redo buttons
   fill(255);
   stroke(0);
   noFill();
   strokeWeight(4);
   ellipseMode(CENTER);
-  arc(735, 388, 32, 32, -HALF_PI-QUARTER_PI, -QUARTER_PI);
-  arc(815, 388, 32, 32, -HALF_PI-QUARTER_PI, -QUARTER_PI);
-  fill(0);
-  triangle(722, 376, 723, 372.5, 726, 377.5);
-  triangle(828, 376, 827, 372.5, 823, 377.5);
+  if(ledsLast[0][0][0] == '0') {
+    stroke(150);
+    arc(735, 388, 32, 32, -HALF_PI-QUARTER_PI, -QUARTER_PI);
+    fill(150);
+    triangle(722, 376, 723, 372.5, 726, 377.5);
+  } else {
+    stroke(0);
+    arc(735, 388, 32, 32, -HALF_PI-QUARTER_PI, -QUARTER_PI);
+    fill(0);
+    triangle(722, 376, 723, 372.5, 726, 377.5);
+  }
+  noFill();
+  if(ledsNext[0][0][0] == '0') {
+    stroke(150);
+    arc(815, 388, 32, 32, -HALF_PI-QUARTER_PI, -QUARTER_PI);
+    fill(150);
+    triangle(828, 376, 827, 372.5, 823, 377.5);
+  } else {
+    stroke(0);
+    arc(815, 388, 32, 32, -HALF_PI-QUARTER_PI, -QUARTER_PI);
+    fill(0);
+    triangle(828, 376, 827, 372.5, 823, 377.5);
+  }
   noStroke();
   ellipseMode(CORNER); //for everywhere else in the code
   //695 355
@@ -569,7 +681,7 @@ void mousePressed() {
     } else if(mouseButton == LEFT && mouseX >= 775 && mouseX <= 855 && mouseY >= 435 && mouseY <= 475) {
       //button for choosing a file to save.
       //before it asks which file, it stores array in the string output.
-      output = "";
+      output = "***image***";
       for(int j = 0; j < 32; j = j + 1) {
         for(int k = 0; k < 32; k = k + 1) {
           if(leds[j][k] == 255) {
@@ -760,10 +872,20 @@ void mousePressed() {
 
 void fileSelected(File selection) {
   //creates the file, prints in file the drawing, flushes and closes.
-  file = createWriter(selection);
-  file.println(output);
-  file.flush();
-  file.close();
+  try {
+    String name = selection.getName();
+    if(name.length() <= 8) {
+      file = createWriter(selection + ".txt");
+      file.println(output);
+      file.flush();
+      file.close();
+    } else {
+      println("invalid");
+    }
+  } catch(Exception e) {
+    println("Error saving, probably didn't choose a file name.");
+  }
+  highlightSave = 0;
 }
 
 int ledCounter = 0;
@@ -771,31 +893,34 @@ String image;
 char[] imageArray;
 
 void fileLoading(File selection) {
-  //creates a new array
-  imageArray = new char[1024];
-  //opens file
-  BufferedReader reader = createReader(selection);
-  //reads file
   try {
-    image = reader.readLine();
-  } catch(IOException e) {
-    e.printStackTrace();
-  }
-  //once read, puts into array the code uses
-  if(image != null) {
-    for(int a = 0; a < 32; a = a + 1) {
-      for(int b = 0; b < 32; b = b + 1) {
-        char c = image.charAt(ledCounter);
-        println(c);
-        leds[a][b] = (char)c;
-        ledCounter++;
+    BufferedReader reader = createReader(selection);
+    //reads file
+    try {
+      image = reader.readLine();
+    } catch(IOException e) {
+      e.printStackTrace();
+    }
+    ledCounter = 11;
+    //once read, puts into array the code uses
+    if(image != null) {
+      for(int a = 0; a < 32; a = a + 1) {
+        for(int b = 0; b < 32; b = b + 1) {
+          char c = image.charAt(ledCounter);
+          println(c);
+          leds[a][b] = (char)c;
+          ledCounter++;
+        }
       }
+      
+      ledCounter = 0;
     }
     
-    ledCounter = 0;
+    resetUndoAndRedo();
+  } catch(Exception e) {
+    println("Error loading, probably didn't choose a file."); 
   }
-  
-  resetUndoAndRedo();
+  highlightLoad = 0;
 }
 
 //setting up variables for "for" loop in drawing line
@@ -828,9 +953,9 @@ void mouseReleased() {
         break;
       case 3:
         if(fillMode == 1) {
-          drawFilledCircle((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY));
+          drawFilledCircle((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY), 0);
         } else { 
-          drawCircle((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY));
+          drawCircle((int)saveX, (int)saveY, centerize(mouseX), centerize(mouseY), 0);
         }
         break;
       case 4:
@@ -845,6 +970,7 @@ void mouseReleased() {
     hasPressed = 0;
   }
   hasPressed = 0;
+  resetHighlight();
 }
 
 /*centerize aligns where the mouse clicked to the corner of the circle, 
@@ -871,7 +997,7 @@ int[][] line12;
 int[][] line02;
 int[][] line012;
 
-void drawFilledTriangle(int x0, int y0, int x1, int y1, int x2, int y2) {
+void drawFilledTriangle(int x0, int y0, int x1, int y1, int x2, int y2, int highlightMode) {
   //https://gabrielgambetta.com/computer-graphics-from-scratch/07-filled-triangles.html
   if(y1 < y0) {
     int a = x0;
@@ -905,7 +1031,11 @@ void drawFilledTriangle(int x0, int y0, int x1, int y1, int x2, int y2) {
   combine(line01, line12, abs(y2 - y0) + 1, (y1 - y0), (y2 - y1) + 1);
   
   for(int i = 0; i < (y2 - y0) + 1; i++) {
-    drawLine(line02[i][0], line02[i][1], line012[i][0], line012[i][1]);
+    if(highlightMode == 1) {
+      highlightLine(line02[i][0], line02[i][1], line012[i][0], line012[i][1]);
+    } else if(highlightMode == 0) {
+      drawLine(line02[i][0], line02[i][1], line012[i][0], line012[i][1]);
+    }
   }
 }
 
@@ -925,7 +1055,7 @@ void combine(int[][] line01, int[][] line12, int size, int y1, int y2) {
   }
 }
 
-void drawCircle(float x1, float y1, float x2, float y2) {
+void drawCircle(float x1, float y1, float x2, float y2, int highlightMode) {
   //https://www.cs.helsinki.fi/group/goa/mallinnus/ympyrat/ymp1.html
   int cx = ((int)x1 - 35) / 20;
   int cy = ((int)y1 - 35) / 20;
@@ -938,7 +1068,7 @@ void drawCircle(float x1, float y1, float x2, float y2) {
   double d = 1 - r;
   
   do {
-    circlePoints(x, y, cx, cy);
+    circlePoints(x, y, cx, cy, highlightMode);
     y++;
     if(d < 0) {
       d = d + 2*y + 1;
@@ -949,7 +1079,7 @@ void drawCircle(float x1, float y1, float x2, float y2) {
   } while(x >= y);
 }
 
-void drawFilledCircle(float x1, float y1, float x2, float y2) {
+void drawFilledCircle(float x1, float y1, float x2, float y2, int highlightMode) {
   int cx = ((int)x1 - 35) / 20;
   int cy = ((int)y1 - 35) / 20;
   int ex = ((int)x2 - 35) / 20;
@@ -961,7 +1091,7 @@ void drawFilledCircle(float x1, float y1, float x2, float y2) {
   double d = 1 - r;
   
   do {
-    filledCirclePoints(x, y, cx, cy);
+    filledCirclePoints(x, y, cx, cy, highlightMode);
     y++;
     if(d < 0) {
       d = d + 2*y + 1;
@@ -972,35 +1102,50 @@ void drawFilledCircle(float x1, float y1, float x2, float y2) {
   } while(x >= y);
 }
 
-void setPoint(double dx, double dy) { 
+void setPoint(double dx, double dy, int highlightMode) { 
   int x = round((float) dx);
   int y = round((float) dy);
   if(x < 0 || x > 31 || y < 0 || y > 31) {
     return;
   }
-  leds[x][y] = mode;
+  if(highlightMode == 0) {
+    leds[x][y] = mode;
+  } else if(highlightMode == 1) {
+    highlighter[x][y] = '1';
+  }
 }
   
-void circlePoints(double x, double y, double cx, double cy) {
-  setPoint(cx + x, cy + y);
-  setPoint(cx + y, cy + x);
-  setPoint(cx + y, cy - x);
-  setPoint(cx + x, cy - y);
-  setPoint(cx - x, cy - y);
-  setPoint(cx - y, cy - x);
-  setPoint(cx - y, cy + x);
-  setPoint(cx - x, cy + y);
+void circlePoints(double x, double y, double cx, double cy, int highlightMode) {
+  setPoint(cx + x, cy + y, highlightMode);
+  setPoint(cx + y, cy + x, highlightMode);
+  setPoint(cx + y, cy - x, highlightMode);
+  setPoint(cx + x, cy - y, highlightMode);
+  setPoint(cx - x, cy - y, highlightMode);
+  setPoint(cx - y, cy - x, highlightMode);
+  setPoint(cx - y, cy + x, highlightMode);
+  setPoint(cx - x, cy + y, highlightMode);
 }
 
-void filledCirclePoints(double x, double y, double cx, double cy) {
-  drawSquare(((cx + x) * 20) + 35, ((cy + y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx + y) * 20) + 35, ((cy + x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx + y) * 20) + 35, ((cy - x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx + x) * 20) + 35, ((cy - y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx - x) * 20) + 35, ((cy - y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx - y) * 20) + 35, ((cy - x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx - y) * 20) + 35, ((cy + x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
-  drawSquare(((cx - x) * 20) + 35, ((cy + y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+void filledCirclePoints(double x, double y, double cx, double cy, int highlightMode) {
+  if(highlightMode == 0) {
+    drawSquare(((cx + x) * 20) + 35, ((cy + y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx + y) * 20) + 35, ((cy + x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx + y) * 20) + 35, ((cy - x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx + x) * 20) + 35, ((cy - y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx - x) * 20) + 35, ((cy - y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx - y) * 20) + 35, ((cy - x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx - y) * 20) + 35, ((cy + x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    drawSquare(((cx - x) * 20) + 35, ((cy + y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+  } else {
+    highlightSquare(((cx + x) * 20) + 35, ((cy + y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx + y) * 20) + 35, ((cy + x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx + y) * 20) + 35, ((cy - x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx + x) * 20) + 35, ((cy - y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx - x) * 20) + 35, ((cy - y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx - y) * 20) + 35, ((cy - x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx - y) * 20) + 35, ((cy + x) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+    highlightSquare(((cx - x) * 20) + 35, ((cy + y) * 20) + 35, (cx * 20) + 35, (cy * 20) + 35);
+  }
 }
 
 int flipped;
@@ -1101,6 +1246,105 @@ void drawLine(int x1, int y1, int x2, int y2) {
       }
     }
     leds[(int)dotX][(int)dotY] = mode;
+  }
+}
+
+void highlightLine(int x1, int y1, int x2, int y2) {
+  lineX1 = x1;
+  lineY1 = y1;
+  lineX2 = x2;
+  lineY2 = y2;
+  //just flips the coordinates if line is being drawn backwards
+  if(lineX1 > lineX2) {
+     int tempx1 = (int)lineX1;
+     int tempy1 = (int)lineY1;
+     lineX1 = lineX2;
+     lineY1 = lineY2;
+     lineX2 = tempx1;
+     lineY2 = tempy1;
+  }
+  
+  //get width and height
+  float lineWidth = lineX2 - lineX1 + 1;
+  
+  if(lineY1 > lineY2) {
+    lineHeight = abs(lineY2 - lineY1) + 1;
+  } else {
+    lineHeight = lineY2 - lineY1 + 1;
+  }
+  
+  //setting up variables for "for" loop
+  
+  //how the line is drawn can change base on slope if it is less or greater than -1.
+  if(lineWidth < lineHeight) {
+    dotX = lineX1;
+    dotY = lineY1 - 1;
+    if(lineY1 > lineY2) {
+      dotY = lineY1 + 1;
+      //leds[(int)dotX][(int)dotY - 1] = mode;
+    } else { 
+      dotY = lineY1 - 1;
+      //leds[(int)dotX][(int)dotY + 1] = mode;
+      
+    }
+    lineLength = (int)lineHeight; 
+  } else if(lineWidth == lineHeight) {
+    dotX = lineX1;
+    dotY = lineY1;
+    highlighter[(int)dotX][(int)dotY] = '1';
+    lineLength = (int)lineHeight - 1;
+  } else {
+    dotY = lineY1;
+    dotX = lineX1 - 1;
+    //leds[(int)dotX + 1][(int)dotY] = mode;
+    lineLength = (int)lineWidth;
+  }  
+  
+  //leds[(int)lineX2][(int)lineY2] = mode;
+  
+  for(int i = 0; i < lineLength; i++) {
+    if(lineY1 > lineY2) {
+      if(lineWidth >= lineHeight) {
+         int a = (int)((lineHeight / lineWidth) * (i - 1));
+         int b = (int)((lineHeight / lineWidth) * i);
+         if(b > a) {
+           dotX++;
+           dotY--;
+         } else {
+           dotX++;
+         }
+      } else {
+        int c = (int)((lineWidth / lineHeight) * (i - 1));
+        int d = (int)((lineWidth / lineHeight) * i);
+        if(d > c) {
+          dotX++;
+          dotY--;
+        } else {
+          dotY--;
+        }
+      }
+    } else {
+      if(lineWidth >= lineHeight) {
+         int a = (int)((lineHeight / lineWidth) * (i - 1));
+         int b = (int)((lineHeight / lineWidth) * i);
+         if(b > a) {
+           dotX++;
+           dotY++;
+         } else {
+           dotX++;
+         }
+      } else {
+        int c = (int)((lineWidth / lineHeight) * (i - 1));
+        int d = (int)((lineWidth / lineHeight) * i);
+        if(d > c) {
+          dotX++;
+          dotY++;
+        } else {
+          dotY++;
+        }
+      }
+    }
+    highlighter[(int)dotX][(int)dotY] = '1';
   }
 }
 
@@ -1262,5 +1506,101 @@ void drawSquare(double x1, double y1, double x2, double y2) {
       y += 20;
     }
     x += 20;
+  }
+}
+
+void highlightSquare(double x1, double y1, double x2, double y2) {
+  //basically this code decides which cirlces to draw in between the pressed and released coords.
+  //it just gets more complicated because rectangles can be drawn in four different directions.
+  //hasPressed = 0;
+  x = 35;
+  for(int j = 0; j < 32; j++) {
+    y = 35;
+    for(int i = 0; i < 32; i++) {
+      if(x1 > x2 && y1 > y2) {
+        if(x < (x1 + 12) && x > (x2 - 2) && y < (y1 + 12) && y > (y2 - 2)) {
+          highlighter[(int)j][(int)i] = '1';
+        }
+      } else if(x1 > x2 && y1 < y2) {
+        if(x < (x1 + 12) && x > (x2 - 2) && y < (y2 + 12) && y > (y1 - 2)) {
+          highlighter[(int)j][(int)i] = '1';
+        }
+      } else if(x1 < x2 && y1 > y2) {
+        if(x < (x2 + 12) && x > (x1 - 2) && y < (y1 + 12) && y > (y2 - 2)) {
+          highlighter[(int)j][(int)i] = '1';
+        }
+      } else if(x1 < x2 && y1 < y2) {
+        if(x < (x2 + 12) && x > (x1 - 2) && y < (y2 + 12) && y > (y1 - 2)) {
+          highlighter[(int)j][(int)i] = '1';
+        }
+      }
+      y += 20;
+    }
+    x += 20;
+  }
+}
+
+
+boolean controlPressed;
+boolean shiftPressed;
+
+void keyPressed() {
+  if(key == CODED) {
+    if(keyCode == 157) {
+      controlPressed = true;
+    } else if(keyCode == SHIFT) {
+      shiftPressed = true;
+    } else {
+      controlPressed = false;  
+      shiftPressed = false;
+    }
+  } else if(keyCode == 'Z' && controlPressed && shiftPressed) {
+    highlightRedo = 1;
+    if(ledsNext[0][0][0] == '0') {
+      println("cannot redo");
+    } else {
+      redo();
+    }
+  } else if(keyCode == 'Z' && controlPressed) { 
+    highlightUndo = 1;
+    if(ledsLast[0][0][0] == '0') {
+      println("cannot undo");
+    } else {
+      undo();
+    }
+  } else if(keyCode == 'O' && controlPressed) { 
+    highlightLoad = 1;
+    selectInput("Select a file to load...", "fileLoading");
+  } else if(keyCode == 'S' && controlPressed) { 
+    highlightSave = 1;
+    output = "***image***";
+    for(int j = 0; j < 32; j = j + 1) {
+      for(int k = 0; k < 32; k = k + 1) {
+        if(leds[j][k] == 255) {
+          output = output + "1"; 
+        } else {
+          output = output + (char) leds[j][k];
+        }
+      }
+    }
+    println(output);
+    selectOutput("Select a file to save...", "fileSelected");
+  } else {
+    controlPressed = false;  
+    shiftPressed = false;
+  }
+}
+
+void keyReleased() {
+  highlightUndo = 0;
+  highlightRedo = 0;
+  highlightSave = 0;
+  highlightLoad = 0;
+  if(key == CODED) {
+    if(keyCode == 157) {
+      controlPressed = false;     
+    } else if(keyCode == SHIFT) {
+      shiftPressed = false;  
+    }
   }
 }
